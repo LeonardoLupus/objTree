@@ -2,7 +2,7 @@
 
 std::list<Face> Branch::get_branch_faces(std::size_t downStart, std::size_t upStart) {
     std::size_t downCount = base.get_count_of_points();
-    std::size_t upCount = end.get_count_of_points();
+    std::size_t upCount = end->get_count_of_points();
     std::list<Face> faces;
     if ((upCount < 3 && upCount != 1) || downCount < upCount) {
         return faces;
@@ -31,7 +31,7 @@ Mesh Branch::create_mesh() {
     Mesh origin;
 
     origin.add_vertices(base.get_points());
-    origin.add_vertices(end.get_points());
+    origin.add_vertices(end->get_points());
     origin.add_faces(get_branch_faces(1, base.get_count_of_points() +1));
 
     return origin;

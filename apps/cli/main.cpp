@@ -10,7 +10,7 @@ int main() {
     Circle b(10.f, 8.f);
     b.center = {0.f, 20.f, 0.f};
     cilynder.base = a;
-    cilynder.end = b;
+    cilynder.end = std::make_unique<Circle>(b);
     Mesh origrin = cilynder.create_mesh();
     origrin.save();
     return 0;

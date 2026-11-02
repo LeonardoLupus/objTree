@@ -11,10 +11,10 @@
 struct Branch
 {
     Circle base;
-    Circle end;
+    std::unique_ptr<Circle> end;
     float (*func_chage_radius)(float x) = nullptr;
-    // std::unique_ptr<Branch> prev = std::make_unique<Branch>(nullptr);
-    // std::vector<std::unique_ptr<Branch>> child;
+    std::unique_ptr<Branch> prev = std::make_unique<Branch>();
+    std::vector<std::unique_ptr<Branch>> child;
 
     Mesh create_mesh();
 
