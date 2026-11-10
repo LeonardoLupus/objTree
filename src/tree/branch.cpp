@@ -1,6 +1,6 @@
 #include <objtree/tree/branch.h>
 
-std::list<Face> Branch::get_branch_faces(std::size_t downStart, std::size_t upStart) {
+std::list<Face> Branch::get_branch_faces(std::size_t downStart, std::size_t upStart) const {
     std::size_t downCount = base.get_count_of_points();
     std::size_t upCount = end->get_count_of_points();
     std::list<Face> faces;

@@ -7,6 +7,15 @@ std::size_t Mesh::countVertices() {
     return vertices.size();
 }
 
+const std::list<Vector3d>& Mesh::get_vertices() const {
+    return vertices;
+}
+
+const std::list<Face>& Mesh::get_faces() const {
+    return faces;
+}
+
+
 void Mesh::add_vertices(const std::list<Vector3d>& v) {
     for (const auto& point : v)
     {
@@ -14,11 +23,16 @@ void Mesh::add_vertices(const std::list<Vector3d>& v) {
     }
 }
 
-void Mesh::add_faces(const std::list<Face>& f) {
+void Mesh::add_faces(const std::list<Face>& f, std::size_t startIdx) {
     for (const auto& tr : f)
     {
-        faces.push_back(tr);
+        faces.push_back(tr + startIdx);
     }
+}
+
+void Mesh::add_mesh(const Mesh& m) {
+    this->add_vertices(m.get_vertices());
+    this->add_faces(m.get_faces(), countVertices());
 }
 
 bool Mesh::save() {
@@ -30,7 +44,7 @@ bool Mesh::save() {
     }
     out << "\n";
     for(const auto& tr : faces) {
-        out << "f " << idxVerticeStart + tr(0) -1 << " " << idxVerticeStart + tr(1) -1 << " " << idxVerticeStart + tr(2) -1 << "\n";
+        out << "f " << tr(0) << " " << tr(1) << " " << tr(2) << "\n";
     }
     out.close();
     return true;

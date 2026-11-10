@@ -17,7 +17,8 @@ public:
     ~Circle() = default;
     Circle(float r, float pr): radius(r), pointsPerRadius(pr) {}
     void set_normal(const Vector3d& n);
-    std::list<Vector3d> get_points();
-    std::size_t get_count_of_points();
+    Vector3d get_normal() const;
+    std::list<Vector3d> get_points() const;
+    std::size_t get_count_of_points() const;
 };
 
