@@ -16,12 +16,12 @@ namespace {
     std::mt19937 gen;
     std::random_device rd;
 
-    constexpr float POINT_PER_RADIUS = 20;
-    constexpr int COUNT_OF_BRANCH_MIN = 1;
-    constexpr int COUNT_OF_BRANCH_MAX = 1;
+    constexpr float POINT_PER_RADIUS = 60;
+    constexpr int COUNT_OF_BRANCH_MIN = 2;
+    constexpr int COUNT_OF_BRANCH_MAX = 2;
     constexpr float COEFF_LEN_BY_RADIUS = 30.f;
-    constexpr float COEFF_SEPARATION_M = 0.5f;
-    constexpr float COEFF_SEPARATION_D = 0.1f;
+    constexpr float COEFF_SEPARATION_MIN = 0.1f;
+    constexpr float COEFF_SEPARATION_MAX = 0.5f;
     constexpr float RADIUS_MAX = 2.5f;
     constexpr float RADIUS_MIN = 3 / POINT_PER_RADIUS;
     constexpr int COEFF_COUNT_FLEX = 5;
@@ -39,11 +39,6 @@ namespace {
         return number;
     }
 
-    // int count_of_branches() {
-    //     std::uniform_int_distribution<> rangeRandom(COUNT_OF_BRANCH_MIN, COUNT_OF_BRANCH_MAX);
-    //     return rangeRandom(gen);
-    // }
-
     float len_by_radius(float r) {
         return r*COEFF_LEN_BY_RADIUS;
     }
@@ -53,24 +48,40 @@ namespace {
         return (heightMax - height) * downRadius / heightMax;
     }
 
-    // float radius_by_len(float len) {
-    //     return len/COEFF_LEN_BY_RADIUS;
-    // }
-
-    // float volume_of_cone(float r) {
-    //     return len_by_radius(r) * 2*M_PI*r;
-    // }
-
-    // float separate_at(float r) {
-    //     float m = (r-static_cast<float>(RADIUS_MAX))*0.45/static_cast<float>(RADIUS_MIN - RADIUS_MAX) + 0.5f;
-    //     return limit_normal_distribution(m, 0.1f, 0.5f, 0.95f);
-    // }
+    float separate_at(float r) {
+        (void) r;
+        return 0.2f;
+        // float m = (r-static_cast<float>(RADIUS_MAX))*0.35f/static_cast<float>(RADIUS_MIN - RADIUS_MAX) + 0.2f;
+        return limit_normal_distribution(0.2f, 0.1f, 0.1f, 0.3f);
+    }
 
     // int count_of_flex(float r) {
     //     float branchLvl = 1.f - r/RADIUS_MAX;
     //     int m = static_cast<int>(branchLvl * COEFF_COUNT_FLEX);
     //     return limit_normal_distribution(m, 1, 0, COEFF_COUNT_FLEX);
     // }
+
+    Vector3d direction_flex(float coeff = 1.f) {
+        Vector3d v;
+        float PI = 3.141592f;
+        float az = limit_normal_distribution(0.f, PI/4.f, -PI, PI);
+        float ap = limit_normal_distribution(0.f, PI/6.f, -PI/4.f, PI/4.f);
+        v.x = std::cos(az);
+        v.z = std::sin(az);
+        v.y = std::cos(ap);
+        return v*coeff;
+    }
+
+    // int count_of_branches() {
+    //     std::uniform_int_distribution<> rangeRandom(COUNT_OF_BRANCH_MIN, COUNT_OF_BRANCH_MAX);
+    //     return rangeRandom(gen);
+    // }
+
+    // float volume_of_cone(float r) {
+    //     return len_by_radius(r) * 2*M_PI*r;
+    // }
+
+    
 
 }
 
@@ -79,7 +90,7 @@ class ObjTree
 private:
 
     // Branch root;
-    std::size_t seed;
+    unsigned int seed;
 
 public:
     ObjTree() = default;
@@ -87,7 +98,8 @@ public:
 
     Mesh grow_tree() {
         seed = rd();
-        gen.seed(42);
+        std::cout << "Seed: " << seed <<"\n";
+        gen.seed(seed);
         std::vector<Branch*> stack;
 
         std::unique_ptr root = std::make_unique<Branch>();
@@ -105,8 +117,8 @@ public:
 
             float r = base.radius;
             float len = len_by_radius(r);
-            // len *= separate_at(r);
-            len *= 0.2f;
+            float s = separate_at(r);
+            len *= s;
 
             bool lastBranch = false;
             float endRadius = radius_at_height(len, r);
@@ -117,20 +129,31 @@ public:
             endBranch.radius = endRadius;
             endBranch.pointsPerRadius = POINT_PER_RADIUS;
             endBranch.center = base.center + base.get_normal()*len;
-            // endBranch.set_normal(...)
+            endBranch.set_normal(base.get_normal());
+            endBranch.set_normal(base.get_normal() + direction_flex(1.f/(3*r)));
+
+            if(lastBranch) {continue;}
+
+            node->separate_branch(6, 1.2f);
+            while(not node->child.empty()) {
+                node = node->child.back().get();
+            }
 
             
 
-            if(not lastBranch) {
-                std::unique_ptr<Branch> next = std::make_unique<Branch>();
-                next->base = endBranch;
+            // int countOfFlex = count_of_flex(r);
+            // for (int i = 0; i < countOfFlex; i++)
+            // {
+            //     /* code */
+            // }
 
-                Branch* nextPtr = next.get();
-                node->child.push_back(std::move(next));
-                stack.push_back(nextPtr);
-            }
+            std::unique_ptr<Branch> next = std::make_unique<Branch>();
+            next->base = endBranch;
 
-
+            Branch* nextPtr = next.get();
+            node->child.push_back(std::move(next));
+            stack.push_back(nextPtr);
+            std::cout << "Size build: " << stack.size() << "\n";
 
             // int branches = count_of_branches();
             // float r = std::sqrt(node.get(). / branches)
@@ -140,26 +163,7 @@ public:
             // }
             
         }
-        Mesh obj;
-        const Branch* b = root.get();
-        obj.add_vertices(b->base.get_points());
-        while (b)
-        {
-            obj.add_vertices(b->end->get_points());
-            obj.add_faces(
-                b->get_branch_faces(
-                    obj.countVertices() - b->base.get_count_of_points() - b->end->get_count_of_points() + 1,
-                    obj.countVertices() - b->end->get_count_of_points() + 1
-                )
-            );
-
-            if (b->child.empty()) {
-                break;
-            }
-
-            b = b->child.back().get();
-        }
-        return obj;
+        return root->create_mesh();
     }
 };
 

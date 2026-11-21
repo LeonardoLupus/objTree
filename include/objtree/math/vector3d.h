@@ -31,4 +31,22 @@ struct Vector3d
     Vector3d operator*(float t) const {
         return {x*t, y*t, z*t};
     }
+    Vector3d get_polar() const {
+        return Vector3d{
+            std::atan2(z, x),
+            std::atan2(y, std::hypot(x, z)),
+            len()
+        };
+    }
+    void set_polar(Vector3d polar) {
+        const float theta = polar.x;
+        const float phi   = polar.y;
+        const float r     = polar.z;
+
+        const float rho = r * std::cos(phi);
+
+        x = rho * std::cos(theta);
+        z = rho * std::sin(theta);
+        y = r     * std::sin(phi);
+    }
 };
