@@ -24,7 +24,7 @@ namespace matrix {
         }
     };
 
-    static Matrix3d get_basis(Vector3d j) {
+    inline Matrix3d get_basis(Vector3d j) {
         Vector3d i, k;
         Matrix3d basis;
 
@@ -43,4 +43,41 @@ namespace matrix {
         basis.m[2] = k.x; basis.m[5] = k.y; basis.m[8] = k.z;
         return basis;
     }
+}
+
+inline Vector3d parallel_transport(const Vector3d& x,
+                                   const Vector3d& fromN,
+                                   const Vector3d& toN)
+{
+    Vector3d axis = fromN.vec(toN);
+    float s = axis.len();
+    float c = std::clamp(fromN.dot(toN), -1.f, 1.f);
+
+    if (s < 1e-6f) {
+        // fromN и toN коллинеарны — поворот не нужен или 180°
+        if (c > 0.f) {
+            // одинаковые — просто проекция (страховка)
+            Vector3d xp = x - toN * x.dot(toN);
+            return xp.norm();
+        } else {
+            // противоположные — поворот на 180° вокруг любой перпендикулярной оси
+            Vector3d ref {1.f, 0.f, 0.f};
+            if (std::abs(ref.dot(fromN)) > 0.9f) ref = {0.f, 1.f, 0.f};
+            Vector3d rotAxis = (ref - fromN * ref.dot(fromN)).norm();
+            Vector3d xRot = rotAxis * (2.f * rotAxis.dot(x)) - x;
+            return xRot.norm();
+        }
+    }
+
+    axis = axis / s;
+    float sn = std::sqrt(std::max(0.f, 1.f - c*c));
+
+    // Rodrigues: x' = x·c + (axis × x)·sn + axis·(axis·x)·(1−c)
+    Vector3d xRot = x * c
+                  + axis.vec(x) * sn
+                  + axis * (axis.dot(x) * (1.f - c));
+
+    // На всякий случай — снова проекция на плоскость ⟂ toN
+    Vector3d xp = xRot - toN * xRot.dot(toN);
+    return xp.norm();
 }

@@ -16,24 +16,22 @@ Branch& Branch::operator=(Branch&& b) noexcept {
 void Branch::separate_branch(int count, float tangentScale) {
     if (count <= 0 || !end) return;
 
-    const Circle startCircle = base;
-    const Circle endCircle   = *end;
+    const Vector3d P0 = base.center;
+    const Vector3d P1 = end->center;
 
-    const Vector3d P0 = startCircle.center;
-    const Vector3d P1 = endCircle.center;
-
-    // Масштаб касательных: chord * tangentScale.
-    //   tangentScale < 1  → почти прямая (изгиб только у концов)
-    //   tangentScale = 1  → классический Hermite
-    //   tangentScale > 1  → заметный «пузырь» наружу
+    // Касательные Эрмита: chord * tangentScale
     const float chord  = (P1 - P0).len();
     const float tScale = chord * tangentScale;
-    const Vector3d T0  = startCircle.get_normal() * tScale;
-    const Vector3d T1  = endCircle.get_normal()   * tScale;
+    const Vector3d T0  = base.get_normal() * tScale;
+    const Vector3d T1  = end->get_normal() * tScale;
 
-    const float normalLen = startCircle.get_normal().len();
-    const float r0 = startCircle.radius;
-    const float r1 = endCircle.radius;
+    const float normalLen = base.get_normal().len();
+    const float r0 = base.radius;
+    const float r1 = end->radius;
+
+    // Кэш фрейма предыдущей окружности — отсюда ведём параллельный перенос
+    Vector3d prevN = base.get_normal();
+    Vector3d prevX = base.get_x_axis();
 
     Branch* last = this;
 
@@ -42,14 +40,14 @@ void Branch::separate_branch(int count, float tangentScale) {
         const float t2 = t * t;
         const float t3 = t2 * t;
 
-        // --- P(t) ---
+        // --- P(t) — кубический Hermite ---
         const float h00 =  2.0f*t3 - 3.0f*t2 + 1.0f;
         const float h10 =        t3 - 2.0f*t2 + t;
         const float h01 = -2.0f*t3 + 3.0f*t2;
         const float h11 =        t3 -      t2;
         const Vector3d P = P0*h00 + T0*h10 + P1*h01 + T1*h11;
 
-        // --- P'(t), направление нормали ---
+        // --- P'(t) — направление новой нормали ---
         const float dh00 =  6.0f*t2 - 6.0f*t;
         const float dh10 =  3.0f*t2 - 4.0f*t + 1.0f;
         const float dh01 = -6.0f*t2 + 6.0f*t;
@@ -57,18 +55,21 @@ void Branch::separate_branch(int count, float tangentScale) {
         const Vector3d tangent = P0*dh00 + T0*dh10 + P1*dh01 + T1*dh11;
 
         const float tlen = tangent.len();
-        const Vector3d normal = (tlen > 1e-6f)
-            ? tangent * (normalLen / tlen)
-            : last->base.get_normal();
+        Vector3d newN = (tlen > 1e-6f && normalLen > 1e-6f)
+            ? (tangent * (normalLen / tlen)).norm()
+            : prevN;
 
-        // --- радиус ---
+        // --- радиус с smoothstep ---
         const float s = t * t * (3.0f - 2.0f * t);
         const float r = r0 + (r1 - r0) * s;
 
-        Circle boundary = startCircle;
+        // --- фрейм: x-ось параллельно переносим от предыдущей окружности ---
+        const Vector3d newX = parallel_transport(prevX, prevN, newN);
+
+        Circle boundary = base;
         boundary.center = P;
         boundary.radius = r;
-        boundary.set_normal(normal);
+        boundary.set_frame(newN, newX);
 
         auto next = std::make_unique<Branch>();
         next->base  = std::move(boundary);
@@ -80,6 +81,9 @@ void Branch::separate_branch(int count, float tangentScale) {
         last->child.clear();
         last->child.emplace_back(std::move(next));
         last = last->child.back().get();
+
+        prevN = newN;
+        prevX = newX;
     }
 }
 
