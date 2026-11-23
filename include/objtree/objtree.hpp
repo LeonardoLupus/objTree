@@ -28,6 +28,9 @@ struct TreeConfig {
     float coeffSeparationM      = 0.5f;   // среднее
     float coeffSeparationD      = 0.3f;   // СКО
 
+    // Насколько сильно тонкие ветви клонятся вниз. 0 — без эффекта.
+    float droop = 0.f;
+
     // --- Число детей (нормальное распределение) ---
     int   countBranchMin        = 1;
     int   countBranchMax        = 4;

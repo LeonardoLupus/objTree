@@ -104,6 +104,7 @@ simplejson::JsonObject to_json(const objtree::TreeConfig& c) {
     o["radiusMax"]          = D(c.radiusMax);
     o["coeffSeparationM"]   = D(c.coeffSeparationM);
     o["coeffSeparationD"]   = D(c.coeffSeparationD);
+    o["droop"]              = D(c.droop);
     o["countBranchMin"]     = D(c.countBranchMin);
     o["countBranchMax"]     = D(c.countBranchMax);
     o["countBranchMean"]    = D(c.countBranchMean);
@@ -140,6 +141,7 @@ void from_json(const simplejson::JsonObject& o, objtree::TreeConfig& c) {
     read_num(o, "radiusMax",          c.radiusMax);
     read_num(o, "coeffSeparationM",   c.coeffSeparationM);
     read_num(o, "coeffSeparationD",   c.coeffSeparationD);
+    read_num(o, "droop",              c.droop);
     read_num(o, "countBranchMin",     c.countBranchMin);
     read_num(o, "countBranchMax",     c.countBranchMax);
     read_num(o, "countBranchMean",    c.countBranchMean);
@@ -226,12 +228,9 @@ Mesh grow_tree(TreeConfig cfg) {
 
         std::list<Circle> circleBranches;
         if (cfg.trunkHeight > 0.f && node->end->center.y < cfg.trunkHeight) {
-            // Принудительно «продолжение ствола»: один ребёнок, без случайной фазы.
-            // Дальше код сам пойдёт в ветку countF == 1: branchDir = baseN,
-            // без perturb, без конуса — ствол остаётся строго прямым.
             Circle c;
             c.pointsPerRadius = cfg.pointsPerRadius;
-            c.radius = node->end->radius;
+            c.radius          = node->end->radius;
             circleBranches.push_back(c);
         } else {
             circleBranches = get_child_circle(node->end->radius, cfg);
@@ -300,6 +299,16 @@ Mesh grow_tree(TreeConfig cfg) {
                 newNormal = (branchDir + perturb).norm();
             }
 
+            if (cfg.droop > 0.f) {
+                const bool stillTrunk =
+                    (cfg.trunkHeight > 0.f && node->end->center.y < cfg.trunkHeight);
+                if (!stillTrunk) {
+                    const float thinness = std::clamp(
+                        1.f - next->end->radius / cfg.startRadius, 0.f, 1.f);
+                    branchDir.y -= cfg.droop * thinness;
+                    branchDir = branchDir.norm();
+                }
+            }
             next->end->center = next->base.center + branchDir * len;
 
             Vector3d newX = parallel_transport(baseX, baseN, newNormal);
