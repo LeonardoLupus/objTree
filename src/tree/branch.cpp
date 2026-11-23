@@ -111,27 +111,41 @@ std::list<Face> Branch::get_branch_faces(std::size_t downStart, std::size_t upSt
 }
 
 Mesh Branch::create_mesh() {
+    struct BranchAndIndex
+    {
+        Branch* ptrBranch = nullptr;
+        std::size_t baseIndex = 0;
+    };
+
     Mesh obj;
-    std::list<Branch*> stack;
-    
+    std::list<BranchAndIndex> stack;
+
     obj.add_vertices(base.get_points());
 
-    std::size_t indexVertices = 1;
+    std::size_t indexVertices = 1;   // 1-based индекс начала base рута
     auto ptrBranch = this;
     while (ptrBranch)
     {
+        // Конец текущей ветки ляжет ровно в позицию (countVertices()+1)
+        // (1-based) — сразу после уже добавленных вершин.
+        std::size_t endVertexStart = obj.countVertices() + 1;
+
+        obj.add_faces(ptrBranch->get_branch_faces(indexVertices, endVertexStart));
         obj.add_vertices(ptrBranch->end->get_points());
-        obj.add_faces(ptrBranch->get_branch_faces(indexVertices, ptrBranch->base.get_count_of_points() +indexVertices));
-        indexVertices += ptrBranch->base.get_count_of_points();
-        for (auto& branchUniq: ptrBranch->child)
+
+        // Дети «сидят» base-ом на end-вершинах родителя,
+        // значит baseIndex = endVertexStart.
+        for (auto& branchUniq : ptrBranch->child)
         {
-            stack.emplace_back(branchUniq.get());
+            stack.emplace_back(BranchAndIndex{branchUniq.get(), endVertexStart});
         }
-        if(stack.empty()) {
+
+        if (stack.empty()) {
             ptrBranch = nullptr;
             break;
         }
-        ptrBranch = stack.front();
+        ptrBranch = stack.front().ptrBranch;
+        indexVertices = stack.front().baseIndex;
         stack.pop_front();
     }
 
