@@ -1,20 +1,13 @@
-#include <iostream>
-
 #include <objtree/objtree.hpp>
-#include <objtree/tree/branch.h>
+#include <iostream>
+#include <string>
 
-int main() {
-    std::cout << objtree::greeting() << '\n';
-    ObjTree tree;
-    Mesh qwe = tree.grow_tree();
-    qwe.save();
-    // Branch cilynder;
-    // Circle a(10.f, 8.f);
-    // Circle b(0.128f, 8.f);
-    // b.center = {0.f, 20.f, 0.f};
-    // cilynder.base = a;
-    // cilynder.end = std::make_unique<Circle>(b);
-    // Mesh origrin = cilynder.create_mesh();
-    // origrin.save();
+int main(int argc, char** argv) {
+    const std::string path = (argc > 1) ? argv[1] : "tree.json";
+    std::cout << "Config: " << path << "\n";
+
+    auto cfg  = objtree::load_or_create_config(path);
+    auto mesh = objtree::grow_tree(cfg);
+    mesh.save();
     return 0;
 }

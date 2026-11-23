@@ -31,6 +31,7 @@ add_library(objTree_core STATIC
     src/obj/points.cpp
     src/obj/circle.cpp
     src/tree/branch.cpp
+    src/util/json.cpp
 )
 
 target_include_directories(objTree_core PUBLIC
